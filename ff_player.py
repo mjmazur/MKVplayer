@@ -5,6 +5,7 @@ import glob
 import argparse
 import numpy as np
 import datetime
+import scipy.ndimage as ndimage
 
 # Add RMS to the path so we can import the FF format modules
 sys.path.append(os.path.expanduser('~/source/RMS'))
@@ -69,6 +70,12 @@ def main():
         ff.maxpixel = ff.array[0]
         ff.maxframe = ff.array[1]
         ff.avepixel = ff.array[2]
+        
+    # Convolve maxpixel with a 2D Gaussian where FWHM = 5 pixels
+    print(f"Applying Gaussian filter to maximum array (FWHM=5)...")
+    sigma = 5.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    smoothed_maxpixel = ndimage.gaussian_filter(ff.maxpixel.astype(float), sigma=sigma)
+    ff.maxpixel = np.clip(smoothed_maxpixel, 0, 255).astype(np.uint8)
         
     for i in range(nframes):
         # Start with the average pixel frame as the background
