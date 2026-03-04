@@ -2,6 +2,7 @@ import cv2
 import sys
 import os
 import glob
+import argparse
 
 def find_default_mkv():
     # Try current directory first
@@ -17,21 +18,27 @@ def find_default_mkv():
     return None
 
 def main():
-    video_path = None
-    if len(sys.argv) > 1:
-        video_path = sys.argv[1]
-    else:
+    parser = argparse.ArgumentParser(description="MKV Video Player")
+    parser.add_argument("video_path", nargs="?", help="Path to the MKV video file")
+    parser.add_argument("--half-size", action="store_true", help="Scale the video to 1/2 size")
+    args = parser.parse_args()
+
+    video_path = args.video_path
+    if not video_path:
         video_path = find_default_mkv()
         
     if not video_path or not os.path.exists(video_path):
         print("Error: Could not find an MKV file.")
-        print("Usage: python mkv_player.py [path_to_video.mkv]")
+        print("Usage: python mkv_player.py [path_to_video.mkv] [--half-size]")
         sys.exit(1)
         
     print(f"Playing video: {video_path}")
+    if args.half_size:
+        print("Displaying at half size.")
     print("Controls:")
     print("  Spacebar : Pause/Resume")
     print("  Left/Right : Step backward/forward 1 frame (when paused)")
+    print("  R or 0 : Restart video from beginning")
     print("  Q or Esc : Quit")
 
     cap = cv2.VideoCapture(video_path)
@@ -65,6 +72,9 @@ def main():
         # Create a copy so we can cleanly draw the frame number
         display_frame = frame.copy()
         
+        if args.half_size:
+            display_frame = cv2.resize(display_frame, (0, 0), fx=0.5, fy=0.5)
+            
         # Add frame number text in lower left
         # cv2.putText(image, text, org(bottom-left), font, fontScale, color, thickness)
         text = f"Frame: {current_frame_idx}"
@@ -109,6 +119,13 @@ def main():
                     current_frame_idx -= 1
                     cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_idx)
                     ret, frame = cap.read()
+                    
+        # Restart video
+        elif key in (ord('r'), ord('R'), ord('0')):
+            current_frame_idx = 0
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, frame = cap.read()
+            if not ret: break
                     
         # Normal playback advance
         if not paused and key == -1:
