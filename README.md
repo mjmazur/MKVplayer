@@ -1,6 +1,8 @@
-# MKV Video Player
+A simple Python-based MKV and FF video player built with OpenCV. It provides basic playback functionality with essential controls meant for frame-by-frame analysis.
 
-A simple Python-based MKV video player built with OpenCV. It provides basic playback functionality with essential controls meant for frame-by-frame analysis.
+This project includes two separate scripts:
+- `mkv_player.py`: Plays standard MKV video files.
+- `ff_player.py`: Plays astronomy FITS video formats compressed by the RMS framework.
 
 ## Features
 
@@ -12,7 +14,7 @@ A simple Python-based MKV video player built with OpenCV. It provides basic play
 
 ## Installation
 
-Ensure you have Python installed. The only external dependency is `opencv-python`.
+Ensure you have Python installed.
 
 ```bash
 # Optional: Setup a virtual environment
@@ -25,17 +27,21 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the player script from the directory containing your MKV video:
+Run the player script from the directory containing your MKV or FF video:
 
 ```bash
 # Play the default MKV video in the current/parent directory
 python mkv_player.py
 
-# Play a specific video file
+# Play a specific MKV video file
 python mkv_player.py path/to/your_video.mkv
+
+# Play the default FF video
+python ff_player.py
 
 # Play at native 100% resolution (default is 50%)
 python mkv_player.py --full-size
+python ff_player.py --full-size
 ```
 
 ### Controls
