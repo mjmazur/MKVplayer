@@ -20,7 +20,8 @@ def find_default_mkv():
 def main():
     parser = argparse.ArgumentParser(description="MKV Video Player")
     parser.add_argument("video_path", nargs="?", help="Path to the MKV video file")
-    parser.add_argument("--half-size", action="store_true", help="Scale the video to 1/2 size")
+    parser.add_argument("--full-size", action="store_true", help="Display the video at its native 100% resolution (default is 50% scale)")
+    parser.add_argument("--fps", type=float, default=25.0, help="Frame rate of the video (default: 25.0)")
     args = parser.parse_args()
 
     video_path = args.video_path
@@ -29,12 +30,12 @@ def main():
         
     if not video_path or not os.path.exists(video_path):
         print("Error: Could not find an MKV file.")
-        print("Usage: python mkv_player.py [path_to_video.mkv] [--half-size]")
+        print(f"Usage: python mkv_player.py [path_to_video.mkv] [--full-size]")
         sys.exit(1)
         
     print(f"Playing video: {video_path}")
-    if args.half_size:
-        print("Displaying at half size.")
+    if not args.full_size:
+        print("Displaying at half size (default). Use --full-size for native resolution.")
     print("Controls:")
     print("  Spacebar : Pause/Resume")
     print("  Left/Right : Step backward/forward 1 frame (when paused)")
@@ -48,14 +49,12 @@ def main():
         sys.exit(1)
         
     # Get video properties
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0:
-        fps = 30.0 # fallback
+    fps = args.fps
         
     delay = int(1000 / fps) # milliseconds per frame
     
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print(f"Total frames: {total_frames}, FPS: {fps:.2f}")
+    print(f"Total frames: {total_frames}, FPS (playback): {fps:.2f}")
 
     paused = False
     current_frame_idx = 0
@@ -72,13 +71,25 @@ def main():
         # Create a copy so we can cleanly draw the frame number
         display_frame = frame.copy()
         
-        if args.half_size:
+        if not args.full_size:
             display_frame = cv2.resize(display_frame, (0, 0), fx=0.5, fy=0.5)
             
         # Add frame number text in lower left
         # cv2.putText(image, text, org(bottom-left), font, fontScale, color, thickness)
         text = f"Frame: {current_frame_idx}"
         cv2.putText(display_frame, text, (10, display_frame.shape[0] - 20), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    
+        # Add time elapsed in lower right
+        elapsed_seconds = current_frame_idx / fps
+        mins = int(elapsed_seconds // 60)
+        secs = int(elapsed_seconds % 60)
+        micros = int((elapsed_seconds - int(elapsed_seconds)) * 1_000_000)
+        time_text = f"{mins:02d}:{secs:02d}.{micros:06d}"
+        
+        text_size, _ = cv2.getTextSize(time_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+        x_pos = display_frame.shape[1] - text_size[0] - 10
+        cv2.putText(display_frame, time_text, (x_pos, display_frame.shape[0] - 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                     
         if paused:

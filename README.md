@@ -8,7 +8,7 @@ A simple Python-based MKV video player built with OpenCV. It provides basic play
 - **Playback Control:** Predicts and plays the video at its native framerate.
 - **Frame Navigation:** Accurately seek backward and forward one frame at a time.
 - **On-Screen Display:** Displays the current frame count and pause status dynamically on the video.
-- **Scaling Display:** Optionally scale the playback window to 50% of the native video resolution.
+- **Scaling Display:** The player defaults to 50% scale to fit large videos onto typical monitors, but can be scaled to its native resolution using `--full-size`.
 
 ## Installation
 
@@ -34,8 +34,8 @@ python mkv_player.py
 # Play a specific video file
 python mkv_player.py path/to/your_video.mkv
 
-# Play at 50% scale
-python mkv_player.py --half-size
+# Play at native 100% resolution (default is 50%)
+python mkv_player.py --full-size
 ```
 
 ### Controls
