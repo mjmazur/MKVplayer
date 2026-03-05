@@ -43,6 +43,11 @@ python ff_player.py
 python mkv_player.py --full-size
 python ff_player.py --full-size
 ```
+Usage for synchronized playback:
+```bash
+python sync_player.py [path_to_video.mkv] [--ff-dir path/to/ff/folder] [--fps 25.0] [--full-size]
+```
+If `--ff-dir` is not provided, the script will automatically traverse up the directory structure relative to the MKV file to locate the associated `CapturedFiles` directory.
 
 ### Controls
 

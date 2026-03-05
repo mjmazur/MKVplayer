@@ -40,24 +40,29 @@ def parse_mkv_time_and_camera(mkv_filename):
     else:
         raise ValueError(f"Could not parse camera ID and time from MKV filename: {mkv_filename}")
 
-def load_overlapping_ff_frames(camera_id, mkv_start_time, mkv_duration_seconds, search_dir):
+def load_overlapping_ff_frames(camera_id, mkv_start_time, mkv_duration_seconds, search_dir, explicit_ff_dir=None):
     """
     Search for FF files matching the camera ID and overlapping with the MKV video's time span.
     Reconstructs the frames and returns a list of (absolute_frame_time, frame_image) tuples.
     """
     mkv_end_time = mkv_start_time + datetime.timedelta(seconds=mkv_duration_seconds)
     
-    # Locate the cameraID directory -> CapturedFiles
-    camera_dir = os.path.join(search_dir, camera_id)
-    captured_files_dir = os.path.join(camera_dir, 'CapturedFiles')
-    
-    if not os.path.isdir(captured_files_dir):
-        print(f"Warning: CapturedFiles directory not found: {captured_files_dir}")
-        return []
+    if explicit_ff_dir:
+        # If user explicitly provided a path, look for FF files directly in that directory and its subdirectories
+        ff_files = glob.glob(os.path.join(explicit_ff_dir, '**', 'FF*.fits'), recursive=True) + \
+                   glob.glob(os.path.join(explicit_ff_dir, '**', 'FF*.bin'), recursive=True)
+    else:
+        # Default behavior: Locate the cameraID directory -> CapturedFiles
+        camera_dir = os.path.join(search_dir, camera_id)
+        captured_files_dir = os.path.join(camera_dir, 'CapturedFiles')
         
-    # FF files are in subdirectories of CapturedFiles: cameraID_YYYYMMDD_HHmmss_xxxxxx
-    ff_files = glob.glob(os.path.join(captured_files_dir, f'{camera_id}_*', 'FF*.fits')) + \
-               glob.glob(os.path.join(captured_files_dir, f'{camera_id}_*', 'FF*.bin'))
+        if not os.path.isdir(captured_files_dir):
+            print(f"Warning: CapturedFiles directory not found: {captured_files_dir}")
+            return []
+            
+        # FF files are in subdirectories of CapturedFiles: cameraID_YYYYMMDD_HHmmss_xxxxxx
+        ff_files = glob.glob(os.path.join(captured_files_dir, f'{camera_id}_*', 'FF*.fits')) + \
+                   glob.glob(os.path.join(captured_files_dir, f'{camera_id}_*', 'FF*.bin'))
                
     print(f"Found {len(ff_files)} potential FF files to check for timestamp overlap.")
     reconstructed_frames = []
@@ -154,6 +159,7 @@ def get_nearest_ff_frame(ff_frames, target_time):
 def main():
     parser = argparse.ArgumentParser(description="Synchronized MKV and FF Video Player")
     parser.add_argument("video_path", nargs="?", help="Path to the MKV video file")
+    parser.add_argument("--ff-dir", type=str, help="Optional explicit path to the directory containing FF files")
     parser.add_argument("--full-size", action="store_true", help="Display the videos at native 100% resolution (default is 50% scale)")
     parser.add_argument("--fps", type=float, default=25.0, help="Frame rate of the video (default: 25.0)")
     args = parser.parse_args()
@@ -188,12 +194,16 @@ def main():
     delay = int(1000 / fps) # milliseconds per frame
     print(f"MKV Total frames: {mkv_total_frames}, FPS (playback): {fps:.2f}, Duration: {mkv_duration_seconds:.2f}s")
     
-    # Calculate path 4 levels up to scan for `camera_id` FF files
+    # Calculate default path 4 levels up to scan for `camera_id` FF files if not overridden
     abs_mkv_dir = os.path.abspath(os.path.dirname(video_path))
     search_dir = os.path.abspath(os.path.join(abs_mkv_dir, '..', '..', '..', '..'))
-    print(f"Searching for FF files in '{os.path.join(search_dir, camera_id)}'...")
     
-    ff_frames = load_overlapping_ff_frames(camera_id, start_time, mkv_duration_seconds, search_dir)
+    if args.ff_dir:
+        print(f"Searching for FF files in explicitly provided directory: '{args.ff_dir}'...")
+    else:
+        print(f"Searching for FF files in default directory '{os.path.join(search_dir, camera_id)}'...")
+    
+    ff_frames = load_overlapping_ff_frames(camera_id, start_time, mkv_duration_seconds, search_dir, explicit_ff_dir=args.ff_dir)
     print(f"Loaded {len(ff_frames)} overlapping FF frames.")
 
     if not args.full_size:
