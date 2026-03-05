@@ -162,6 +162,11 @@ def main():
     parser.add_argument("--ff-dir", type=str, help="Optional explicit path to the directory containing FF files")
     parser.add_argument("--full-size", action="store_true", help="Display the videos at native 100% resolution (default is 50% scale)")
     parser.add_argument("--fps", type=float, default=25.0, help="Frame rate of the video (default: 25.0)")
+    
+    if '-h' in sys.argv or '--help' in sys.argv:
+        parser.print_help()
+        sys.exit(0)
+        
     args = parser.parse_args()
 
     video_path = args.video_path
@@ -300,7 +305,7 @@ def main():
              if actual_ff_time is not None and start_time is not None:
                  if sync_mode:
                      time_diff_ms = (actual_ff_time - current_abs_time).total_seconds() * 1000
-                     ff_time_text = f"Diff: {time_diff_ms:+.0f} ms"
+                     ff_time_text = f"Diff: {time_diff_ms:+.3f} ms"
                  else:
                      ff_elapsed = (actual_ff_time - start_time).total_seconds()
                      ff_mins = int(ff_elapsed // 60)
