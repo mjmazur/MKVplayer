@@ -3,6 +3,7 @@ import sys
 import os
 import glob
 import argparse
+import datetime
 
 def find_default_mkv():
     # Try current directory first
@@ -38,9 +39,24 @@ def main():
         print("Displaying at half size (default). Use --full-size for native resolution.")
     print("Controls:")
     print("  Spacebar : Pause/Resume")
-    print("  Left/Right : Step backward/forward 1 frame (when paused)")
+    print("  Left/Right or < / > : Step backward/forward 1 frame (when paused)")
     print("  R or 0 : Restart video from beginning")
     print("  Q or Esc : Quit")
+
+    try:
+        filename = os.path.basename(video_path)
+        parts = filename.split('_')
+        if len(parts) >= 4:
+            date_str = parts[1]
+            time_str = parts[2]
+            us_str = parts[3]
+            dt_str = f"{date_str} {time_str} {us_str}"
+            start_time = datetime.datetime.strptime(dt_str, "%Y%m%d %H%M%S %f")
+        else:
+            start_time = datetime.datetime.now()
+    except Exception as e:
+        print(f"Warning: Could not parse time from filename: {e}")
+        start_time = datetime.datetime.now()
 
     cap = cv2.VideoCapture(video_path)
     
@@ -92,14 +108,22 @@ def main():
         cv2.putText(display_frame, time_text, (x_pos, display_frame.shape[0] - 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                     
+        # Add absolute time in upper right
+        current_time = start_time + datetime.timedelta(seconds=elapsed_seconds)
+        abs_time_text = current_time.strftime("%Y%m%d %H:%M:%S.%f")
+        text_size, _ = cv2.getTextSize(abs_time_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
+        x_pos = display_frame.shape[1] - text_size[0] - 10
+        cv2.putText(display_frame, abs_time_text, (x_pos, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    
         if paused:
             cv2.putText(display_frame, "PAUSED", (10, 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
 
         cv2.imshow(window_name, display_frame)
 
-        # Wait for key press
-        wait_time = delay if not paused else 0
+        # Wait for key press. Delay to prevent UI locking.
+        wait_time = delay if not paused else 50
         key = cv2.waitKeyEx(wait_time)
         
         # Cross-platform keys can be tricky
@@ -111,16 +135,16 @@ def main():
         elif key == 32:
             paused = not paused
             
-        # Left arrow
-        elif key in (65361, 2424832, 2, ord('a'), ord('A')): 
+        # Left arrow or comma (<)
+        elif key in (65361, 2424832, 2, 63234, ord('a'), ord('A'), ord(','), ord('<')): 
             if paused and current_frame_idx > 0:
                 current_frame_idx -= 1
                 cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_idx)
                 ret, frame = cap.read()
                 if not ret: break
                 
-        # Right arrow
-        elif key in (65363, 2555904, 3, ord('d'), ord('D')): 
+        # Right arrow or period (>)
+        elif key in (65363, 2555904, 3, 63235, ord('d'), ord('D'), ord('.'), ord('>')): 
             if paused and current_frame_idx < total_frames - 1:
                 # To move forward one frame while paused, we just read the *next* one
                 current_frame_idx += 1

@@ -90,7 +90,7 @@ def main():
         print("Displaying at half size (default). Use --full-size for native resolution.")
     print("Controls:")
     print("  Spacebar : Pause/Resume")
-    print("  Left/Right : Step backward/forward 1 frame (when paused)")
+    print("  Left/Right or < / > : Step backward/forward 1 frame (when paused)")
     print("  R or 0 : Restart video from beginning")
     print("  Q or Esc : Quit")
 
@@ -145,8 +145,8 @@ def main():
 
         cv2.imshow(window_name, display_frame)
 
-        # Wait for key press
-        wait_time = delay if not paused else 0
+        # Wait for key press. Delay to prevent UI locking.
+        wait_time = delay if not paused else 50
         key = cv2.waitKeyEx(wait_time)
         
         # Escape or Q
@@ -157,13 +157,13 @@ def main():
         elif key == 32:
             paused = not paused
             
-        # Left arrow
-        elif key in (65361, 2424832, 2, ord('a'), ord('A')): 
+        # Left arrow or comma (<)
+        elif key in (65361, 2424832, 2, 63234, ord('a'), ord('A'), ord(','), ord('<')): 
             if paused and current_frame_idx > 0:
                 current_frame_idx -= 1
                 
-        # Right arrow
-        elif key in (65363, 2555904, 3, ord('d'), ord('D')): 
+        # Right arrow or period (>)
+        elif key in (65363, 2555904, 3, 63235, ord('d'), ord('D'), ord('.'), ord('>')): 
             if paused and current_frame_idx < total_frames - 1:
                 current_frame_idx += 1
                     
