@@ -125,18 +125,20 @@ def load_overlapping_ff_frames(camera_id, mkv_start_time, mkv_duration_seconds, 
 def get_nearest_ff_frame(ff_frames, target_time):
     """ Find the FF frame whose timestamp is closest to the given absolute target time """
     if not ff_frames:
-        return None
+        return None, None
         
     # Find absolute difference between target time and all FF frame times
     # This could be optimized via binary search for large arrays, but iterating is fine for 30 seconds of video.
     min_diff = None
     best_frame = None
+    best_idx = 0
     
-    for frame_time, frame_img in ff_frames:
+    for idx, (frame_time, frame_img) in enumerate(ff_frames):
         diff = abs((frame_time - target_time).total_seconds())
         if min_diff is None or diff < min_diff:
             min_diff = diff
             best_frame = frame_img
+            best_idx = idx
             
         # Since it's sorted chronologically, we can break early if difference starts increasing
         if min_diff is not None and diff > min_diff:
@@ -144,8 +146,8 @@ def get_nearest_ff_frame(ff_frames, target_time):
             
     # Optional constraint: Only return if the closest frame is within 1s.
     if min_diff is not None and min_diff < 1.0:
-         return best_frame
-    return None
+         return best_frame, best_idx
+    return None, None
 
 def main():
     parser = argparse.ArgumentParser(description="Synchronized MKV and FF Video Player")
@@ -270,7 +272,7 @@ def main():
         
         # ---- Render FF Frame ----
         # Render the FF frame that is closest to `ff_current_abs_time`
-        matched_ff_frame = get_nearest_ff_frame(ff_frames, ff_current_abs_time)
+        matched_ff_frame, ff_frame_idx = get_nearest_ff_frame(ff_frames, ff_current_abs_time)
         
         if matched_ff_frame is not None:
              ff_display_frame = matched_ff_frame.copy()
@@ -289,8 +291,7 @@ def main():
                  ff_abs_text = "Unknown"
                  
              # Inherit UI overlays for consistency
-             # We do not draw "Frame X" for FF since it represents continuous absolute time snippets
-             cv2.putText(ff_display_frame, "FF Array", (10, ff_display_frame.shape[0] - 20), 
+             cv2.putText(ff_display_frame, f"Frame: {ff_frame_idx}", (10, ff_display_frame.shape[0] - 20), 
                          cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
              
              text_size, _ = cv2.getTextSize(ff_time_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
