@@ -298,11 +298,15 @@ def main():
                  ff_display_frame = cv2.resize(ff_display_frame, (0, 0), fx=0.5, fy=0.5)
                  
              if actual_ff_time is not None and start_time is not None:
-                 ff_elapsed = (actual_ff_time - start_time).total_seconds()
-                 ff_mins = int(ff_elapsed // 60)
-                 ff_secs = int(ff_elapsed % 60)
-                 ff_micros = int((ff_elapsed - int(ff_elapsed)) * 1_000_000)
-                 ff_time_text = f"{ff_mins:02d}:{ff_secs:02d}.{ff_micros:06d}"
+                 if sync_mode:
+                     time_diff_ms = (actual_ff_time - current_abs_time).total_seconds() * 1000
+                     ff_time_text = f"Diff: {time_diff_ms:+.0f} ms"
+                 else:
+                     ff_elapsed = (actual_ff_time - start_time).total_seconds()
+                     ff_mins = int(ff_elapsed // 60)
+                     ff_secs = int(ff_elapsed % 60)
+                     ff_micros = int((ff_elapsed - int(ff_elapsed)) * 1_000_000)
+                     ff_time_text = f"{ff_mins:02d}:{ff_secs:02d}.{ff_micros:06d}"
                  ff_abs_text = actual_ff_time.strftime("%Y%m%d %H:%M:%S.%f")
              else:
                  ff_time_text = "00:00.000000"
