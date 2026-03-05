@@ -72,9 +72,9 @@ def main():
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print(f"Total frames: {total_frames}, FPS (playback): {fps:.2f}")
 
-    paused = False
+    paused = True
     current_frame_idx = 0
-    window_name = "MKV Player"
+    window_name = f"MKV Player: {filename}"
     
     # Read the first frame
     ret, frame = cap.read()

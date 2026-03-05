@@ -100,7 +100,7 @@ def main():
     total_frames = frames.shape[0] # nframes is the first dimension
     print(f"Total frames: {total_frames}, FPS (playback): {fps:.2f}")
 
-    paused = False
+    paused = True
     current_frame_idx = 0
     window_name = "FF Player"
     

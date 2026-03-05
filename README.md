@@ -50,6 +50,6 @@ python ff_player.py --full-size
 - **Spacebar**: Toggle Play / Pause on the **focused** window
 - **Right Arrow or > / .**: Step forward one frame on the **focused** window (when paused)
 - **Left Arrow or < / ,**: Step backward one frame on the **focused** window (when paused)
-- **s**: Synchronize the FF playback time horizontally to match the MKV window's current time (`sync_player.py` only)
+- **s**: Toggle Synchronization Mode (`sync_player.py` only). Activating this tightly binds the playback controls of both windows. Pausing, unpausing, and frame-stepping will affect both windows simultaneously, maintaining their relative time offset.
 - **R or 0**: Restart video from the beginning
 - **Q or Esc**: Quit the player

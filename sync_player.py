@@ -132,6 +132,7 @@ def get_nearest_ff_frame(ff_frames, target_time):
     min_diff = None
     best_frame = None
     best_idx = 0
+    best_time = None
     
     for idx, (frame_time, frame_img) in enumerate(ff_frames):
         diff = abs((frame_time - target_time).total_seconds())
@@ -139,6 +140,7 @@ def get_nearest_ff_frame(ff_frames, target_time):
             min_diff = diff
             best_frame = frame_img
             best_idx = idx
+            best_time = frame_time
             
         # Since it's sorted chronologically, we can break early if difference starts increasing
         if min_diff is not None and diff > min_diff:
@@ -146,8 +148,8 @@ def get_nearest_ff_frame(ff_frames, target_time):
             
     # Optional constraint: Only return if the closest frame is within 1s.
     if min_diff is not None and min_diff < 1.0:
-         return best_frame, best_idx
-    return None, None
+         return best_frame, best_idx, best_time
+    return None, None, None
 
 def main():
     parser = argparse.ArgumentParser(description="Synchronized MKV and FF Video Player")
@@ -204,11 +206,13 @@ def main():
     print("  R or 0 : Restart video from beginning")
     print("  Q or Esc : Quit both")
 
-    mkv_paused = False
-    ff_paused = False
+    mkv_paused = True
+    ff_paused = True
+    sync_mode = False
     
     current_frame_idx = 0
-    mkv_window_name = "Synchronized MKV Player"
+    mkv_filename = os.path.basename(video_path)
+    mkv_window_name = f"Synchronized MKV Player: {mkv_filename}"
     ff_window_name = "Synchronized FF Player"
     
     # Initialize separate absolute time trackers
@@ -267,25 +271,29 @@ def main():
         if mkv_paused:
             cv2.putText(mkv_display_frame, "PAUSED", (10, 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+                        
+        if sync_mode:
+            cv2.putText(mkv_display_frame, "SYNC", (10, 60), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
         cv2.imshow(mkv_window_name, mkv_display_frame)
         
         # ---- Render FF Frame ----
         # Render the FF frame that is closest to `ff_current_abs_time`
-        matched_ff_frame, ff_frame_idx = get_nearest_ff_frame(ff_frames, ff_current_abs_time)
+        matched_ff_frame, ff_frame_idx, actual_ff_time = get_nearest_ff_frame(ff_frames, ff_current_abs_time)
         
         if matched_ff_frame is not None:
              ff_display_frame = matched_ff_frame.copy()
              if not args.full_size:
                  ff_display_frame = cv2.resize(ff_display_frame, (0, 0), fx=0.5, fy=0.5)
                  
-             if ff_current_abs_time is not None and start_time is not None:
-                 ff_elapsed = (ff_current_abs_time - start_time).total_seconds()
+             if actual_ff_time is not None and start_time is not None:
+                 ff_elapsed = (actual_ff_time - start_time).total_seconds()
                  ff_mins = int(ff_elapsed // 60)
                  ff_secs = int(ff_elapsed % 60)
                  ff_micros = int((ff_elapsed - int(ff_elapsed)) * 1_000_000)
                  ff_time_text = f"{ff_mins:02d}:{ff_secs:02d}.{ff_micros:06d}"
-                 ff_abs_text = ff_current_abs_time.strftime("%Y%m%d %H:%M:%S.%f")
+                 ff_abs_text = actual_ff_time.strftime("%Y%m%d %H:%M:%S.%f")
              else:
                  ff_time_text = "00:00.000000"
                  ff_abs_text = "Unknown"
@@ -303,9 +311,21 @@ def main():
              x_pos = ff_display_frame.shape[1] - text_size[0] - 10
              cv2.putText(ff_display_frame, ff_abs_text, (x_pos, 30),
                          cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                         
+             if sync_mode:
+                 # When in sync mode, display the MKV master time directly below the FF interpolated time
+                 mkv_abs_text = f"MKV {current_abs_time.strftime('%H:%M:%S.%f')}"
+                 mkv_text_size, _ = cv2.getTextSize(mkv_abs_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+                 mkv_x_pos = ff_display_frame.shape[1] - mkv_text_size[0] - 10
+                 cv2.putText(ff_display_frame, mkv_abs_text, (mkv_x_pos, 60),
+                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
+                             
              if ff_paused:
                   cv2.putText(ff_display_frame, "PAUSED", (10, 30), 
                               cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)           
+             if sync_mode:
+                  cv2.putText(ff_display_frame, "SYNC", (10, 60), 
+                              cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
              
              cv2.imshow(ff_window_name, ff_display_frame)
 
@@ -333,10 +353,14 @@ def main():
         if key == 27 or key == ord('q') or key == ord('Q'):
             break
             
-        # Synchronization key 's' (Globally resync FF to MKV current time)
+        # Synchronization key 's' (Toggle sync mode to link controls without snapping time)
         elif key == ord('s') or key == ord('S'):
-            ff_current_abs_time = current_abs_time
-            print(f"Synchronized FF to MKV at {ff_current_abs_time.strftime('%H:%M:%S.%f')}")
+            sync_mode = not sync_mode
+            if sync_mode:
+                ff_paused = mkv_paused
+                print("Linked playback controls.")
+            else:
+                print("Unlinked controls.")
             
         # Due to OpenCV focus limitations, we use a simpler approach:
         # Standard keys (space, a, d) control MKV.
@@ -348,7 +372,29 @@ def main():
         
         active_window = getattr(main, 'active_window', mkv_window_name)
 
-        if active_window == mkv_window_name:
+        if sync_mode:
+            if key == 32: # Spacebar
+                mkv_paused = not mkv_paused
+                ff_paused = mkv_paused
+            elif key in (65361, 2424832, 2, 63234, ord('a'), ord('A'), ord(','), ord('<')): 
+                if mkv_paused and current_frame_idx > 0:
+                    current_frame_idx -= 1
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_idx)
+                    ret, mkv_frame = cap.read()
+                    ff_current_abs_time -= datetime.timedelta(seconds=1.0/fps)
+            elif key in (65363, 2555904, 3, 63235, ord('d'), ord('D'), ord('.'), ord('>')): 
+                if mkv_paused and current_frame_idx < mkv_total_frames - 1:
+                    current_frame_idx += 1
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_idx)
+                    ret, mkv_frame = cap.read()
+                    ff_current_abs_time += datetime.timedelta(seconds=1.0/fps)
+            elif key in (ord('r'), ord('R'), ord('0')):
+                current_frame_idx = 0
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, mkv_frame = cap.read()
+                ff_current_abs_time = start_time
+
+        elif active_window == mkv_window_name:
             if key == 32: # Spacebar
                 mkv_paused = not mkv_paused
             elif key in (65361, 2424832, 2, 63234, ord('a'), ord('A'), ord(','), ord('<')): 
