@@ -13,19 +13,6 @@ from RMS.Formats.FFfile import read as readFF
 from RMS.Formats.FFfile import reconstruct
 from RMS.Formats.FFfile import filenameToDatetime
 
-def find_default_mkv():
-    # Try current directory first
-    mkv_files = glob.glob('*.mkv')
-    if mkv_files:
-        return mkv_files[0]
-        
-    # Try parent directory
-    parent_mkv_files = glob.glob(os.path.join('..', '*.mkv'))
-    if parent_mkv_files:
-        return parent_mkv_files[0]
-        
-    return None
-
 def parse_mkv_time_and_camera(mkv_filename):
     """ Extract the camera ID and absolute start datetime from the MKV filename. """
     parts = mkv_filename.split('_')
@@ -158,24 +145,16 @@ def get_nearest_ff_frame(ff_frames, target_time):
 
 def main():
     parser = argparse.ArgumentParser(description="Synchronized MKV and FF Video Player")
-    parser.add_argument("video_path", nargs="?", help="Path to the MKV video file")
+    parser.add_argument("video_path", help="Path to the MKV video file")
     parser.add_argument("--ff-dir", type=str, help="Optional explicit path to the directory containing FF files")
     parser.add_argument("--full-size", action="store_true", help="Display the videos at native 100% resolution (default is 50% scale)")
     parser.add_argument("--fps", type=float, default=25.0, help="Frame rate of the video (default: 25.0)")
-    
-    if '-h' in sys.argv or '--help' in sys.argv:
-        parser.print_help()
-        sys.exit(0)
-        
     args = parser.parse_args()
 
     video_path = args.video_path
-    if not video_path:
-        video_path = find_default_mkv()
         
-    if not video_path or not os.path.exists(video_path):
-        print("Error: Could not find an MKV file.")
-        print(f"Usage: python sync_player.py [path_to_video.mkv] [--full-size]")
+    if not os.path.exists(video_path):
+        print(f"Error: Could not find MKV file at {video_path}")
         sys.exit(1)
         
     print(f"Playing MKV video: {video_path}")
